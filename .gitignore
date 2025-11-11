@@ -1,0 +1,88 @@
+'EOF'
+# =============================================
+# qmake SPECÍFICO
+# =============================================
+*.pro.user
+*.pro.user.*
+*.autosave
+moc_*
+qrc_*
+ui_*
+qmake_*
+*.qm
+*.qrc
+Makefile*
+*-Build-*
+
+# Directorios de build (qmake genera estos)
+build-*/
+Debug/
+Release/
+release/
+debug/
+x64/
+x86/
+obj/
+*.tmp
+
+# =============================================
+# COMPILACIÓN C++
+# =============================================
+*.o
+*.obj
+*.res
+*.exe
+*.app
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.ilk
+*.pdb
+*.idb
+*.exp
+
+# =============================================
+# SISTEMA Y TEMPORALES
+# =============================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+*.bak
+*.backup
+*.log
+*.tmp
+*.cache
+core
+core.*
+
+# =============================================
+# IDEs Y EDITORES
+# =============================================
+.vscode/
+.idea/
+*.sln
+*.vcxproj*
+*.vcproj*
+*.cbp
+*.depend
+*.layout
+*.creator
+*.config
+*.files
+*.includes
+
+# =============================================
+# QT CREATOR ESPECÍFICO
+# =============================================
+*.pro.user*
+*.autosave
+*.cflags
+*.cxxflags
+*.config
+*.files
+*.includes
+EOF
