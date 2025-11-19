@@ -66,17 +66,20 @@ void MainWindow::cargarNivel2()
         delete nivelActual;
         nivelActual = nullptr;
     }
+    if (nivelActualIso != nullptr) {
+        contenedor->removeWidget(nivelActualIso);
+        delete nivelActualIso;
+        nivelActualIso = nullptr;
+    }
 
-    // Crear nuevo nivel
-    nivelActual = new Nivel(2, this);
-    connect(nivelActual, &Nivel::volverAlMenu, this, &MainWindow::mostrarMenuPrincipal);
+    // Crear el nivel isométrico
+    nivelActualIso = new NivelIso(this);
+    connect(nivelActualIso, &NivelIso::volverAlMenu, this, &MainWindow::mostrarMenuPrincipal);
 
-    // Agregar nivel al contenedor
-    contenedor->addWidget(nivelActual);
-
-    // Cambiar a la página del nivel
-    contenedor->setCurrentWidget(nivelActual);
+    contenedor->addWidget(nivelActualIso);
+    contenedor->setCurrentWidget(nivelActualIso);
 }
+
 
 void MainWindow::cargarNivel3()
 {
@@ -104,9 +107,21 @@ void MainWindow::mostrarMenuPrincipal()
     contenedor->setCurrentIndex(0);
 
     // Eliminar el nivel después de cambiar de página
+    // Destruir nivel 2D si existe
     if (nivelActual != nullptr) {
         contenedor->removeWidget(nivelActual);
         nivelActual->deleteLater();
         nivelActual = nullptr;
     }
+
+    // Destruir nivel isométrico si existe
+    if (nivelActualIso != nullptr) {
+        contenedor->removeWidget(nivelActualIso);
+        nivelActualIso->deleteLater();
+        nivelActualIso = nullptr;
+    }
+
+
 }
+
+
