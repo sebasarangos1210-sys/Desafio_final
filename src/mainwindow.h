@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QStackedWidget>
+#include "NivelIso.h"
 #include "nivel.h"
 
 QT_BEGIN_NAMESPACE
@@ -25,8 +26,9 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    QStackedWidget *contenedor;  // Alterna entre menú y nivel
+    QStackedWidget *contenedor;
     Nivel *nivelActual;
+    NivelIso *nivelActualIso = nullptr;
 };
 
 #endif // MAINWINDOW_H
