@@ -11,18 +11,14 @@ CONFIG += c++17
 include(src/entities/entities.pri)
 include(src/levels/levels.pri)
 include(src/utilities/utilities.pri)
-
+include(src/core/core.pri)
 
 SOURCES += \
     src/main.cpp \
-    src/mainwindow.cpp \
-    src/nivel.cpp \
-    src/sistema.cpp
+    src/mainwindow.cpp
 
 HEADERS += \
     src/mainwindow.h \
-    src/nivel.h \
-    src/sistema.h \
 
 FORMS += \
     src/mainwindow.ui
@@ -31,3 +27,6 @@ FORMS += \
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+RESOURCES += \
+    assets/ui.qrc
