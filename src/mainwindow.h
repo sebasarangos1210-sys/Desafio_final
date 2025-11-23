@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <QStackedWidget>
 #include "NivelIso.h"
-#include "nivel.h"
+#include "levels/nivel.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
