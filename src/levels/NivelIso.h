@@ -38,19 +38,46 @@ private:
     void drawHitbox(QPainter &painter,
                     const Hitbox &hitbox,
                     const QPointF &worldPos);
-    QPoint static toScreen();
+
+    // Funciones para el sistema de scrolling
+    void updateObstaculos();      // Mueve los obstáculos hacia el barco
+    void generarNuevosObstaculos(); // Genera obstáculos nuevos
+    void dibujarFondoScrolling(QPainter &painter); // Fondo en movimiento
+    void dibujarVidas(QPainter &painter); // Dibujar indicador de vidas
+    void dibujarTiempo(QPainter &painter); // Dibujar tiempo restante
+    void reiniciarNivel();        // Reiniciar el nivel
+    void mostrarVictoria();       // Mostrar mensaje de victoria
 
     Barco m_barco;
     QVector<Obstaculo> m_obstaculos;
     QTimer *m_timer;
 
-    // Input simple
+    // Input simple (solo movimiento lateral ahora)
     bool m_moveLeft;
     bool m_moveRight;
-    bool m_moveUp;
-    bool m_moveDown;
+    bool m_sprint;  // Estado del sprint
 
     QRectF m_playArea;
+
+    // Variables para el scrolling automático
+    qreal m_scrollOffset;         // Desplazamiento acumulado del fondo
+    qreal m_scrollSpeed;          // Velocidad del scrolling
+    qreal m_scrollSpeedBase;      // Velocidad base (sin sprint)
+    qreal m_scrollSpeedSprint;    // Velocidad con sprint
+    qreal m_limiteEliminacion;    // Posición Y donde se eliminan obstáculos
+    qreal m_limiteGeneracion;     // Posición Y donde aparecen obstáculos
+    int m_contadorFrames;         // Contador para generar obstáculos periódicamente
+
+    // Sistema de vidas
+    int m_vidas;                  // Vidas actuales del jugador
+    int m_vidasMaximas;           // Vidas máximas
+    bool m_invulnerable;          // Estado de invulnerabilidad temporal
+    int m_contadorInvulnerabilidad; // Frames restantes de invulnerabilidad
+
+    // Sistema de tiempo y victoria
+    int m_tiempoTranscurrido;     // Tiempo en frames (60 frames = 1 segundo)
+    int m_tiempoParaGanar;        // Meta en frames (1200 frames = 20 segundos)
+    bool m_nivelCompletado;       // Flag de victoria
 };
 
 #endif // NIVELISO_H
