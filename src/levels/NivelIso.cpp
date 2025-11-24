@@ -87,7 +87,7 @@ void NivelIso::initScene()
 
     // Generar algunos obstáculos iniciales
     for (int i = 0; i < 3; i++) {
-        Obstaculo o;
+        Obstaculon2 o;
         qreal x = 100.0 + i * 80.0;  // Lejos del barco
         // Usar bounded con enteros y convertir a qreal
         qreal y = static_cast<qreal>(QRandomGenerator::global()->bounded(-100, 100));
@@ -196,7 +196,7 @@ void NivelIso::paintEvent(QPaintEvent *event)
     }
 
     // Dibujar obstáculos (mismo patrón que el barco)
-    for (const Obstaculo &o : m_obstaculos) {
+    for (const Obstaculon2 &o : m_obstaculos) {
         QPointF oWorld = o.position();
         QPointF oScreen = ProyeccionIso::toScreen(oWorld);
 
@@ -216,7 +216,7 @@ void NivelIso::paintEvent(QPaintEvent *event)
     // Dibujar hitboxes (verde si no colisiona, rojo si está en colisión)
     drawHitbox(painter, m_barco.hitbox(), m_barco.position());
 
-    for (const Obstaculo &o : m_obstaculos) {
+    for (const Obstaculon2 &o : m_obstaculos) {
         drawHitbox(painter, o.hitbox(), o.position());
     }
 }
@@ -514,6 +514,17 @@ void NivelIso::updateGame()
     // 4) Generar nuevos obstáculos periódicamente
     generarNuevosObstaculos();
 
+    // Limite de stamina
+    if (m_sprint) {
+        m_stamina--;
+        if (m_stamina <= 0) {
+            m_sprint = false;
+            m_scrollSpeed = m_scrollSpeedBase;
+        }
+    } else {
+        m_stamina = qMin(m_stamina + 2, m_staminaMax);  // Recuperar
+    }
+
     // 5) Detectar colisiones
     updateCollisions();
 
@@ -558,7 +569,7 @@ void NivelIso::updateBarcoFromInput()
 
     // Verificar si hay colisión con algún obstáculo
     bool hayColision = false;
-    for (const Obstaculo &o : m_obstaculos) {
+    for (const Obstaculon2 &o : m_obstaculos) {
         if (m_barco.hitbox().intersects(o.hitbox(),
                                         m_barco.position(),
                                         o.position())) {
@@ -602,7 +613,7 @@ void NivelIso::generarNuevosObstaculos()
         int cantidad = QRandomGenerator::global()->bounded(1, 3);
 
         for (int i = 0; i < cantidad; i++) {
-            Obstaculo o;
+            Obstaculon2 o;
 
             // Posición X: lejos (donde aparecen)
             qreal x = m_limiteGeneracion;
@@ -623,14 +634,14 @@ void NivelIso::updateCollisions()
 {
     // Resetear estado de colisión en todas las hitboxes
     m_barco.hitbox().setColliding(false);
-    for (Obstaculo &o : m_obstaculos) {
+    for (Obstaculon2 &o : m_obstaculos) {
         o.hitbox().setColliding(false);
     }
 
     // Solo detectar colisiones si no está invulnerable
     if (!m_invulnerable) {
         // Revisar barco vs cada obstáculo (pensado en 2D)
-        for (Obstaculo &o : m_obstaculos) {
+        for (Obstaculon2 &o : m_obstaculos) {
             bool col = m_barco.hitbox().intersects(
                 o.hitbox(),
                 m_barco.position(),
@@ -658,7 +669,7 @@ void NivelIso::updateCollisions()
         }
     } else {
         // Aunque esté invulnerable, marcar colisiones para debug visual
-        for (Obstaculo &o : m_obstaculos) {
+        for (Obstaculon2 &o : m_obstaculos) {
             bool col = m_barco.hitbox().intersects(
                 o.hitbox(),
                 m_barco.position(),

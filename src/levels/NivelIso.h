@@ -5,7 +5,7 @@
 #include <QVector>
 #include <QPointF>
 #include "barco.h"
-#include "obstaculo.h"
+#include "obstaculon2.h"
 
 class QTimer;
 
@@ -49,7 +49,7 @@ private:
     void mostrarVictoria();       // Mostrar mensaje de victoria
 
     Barco m_barco;
-    QVector<Obstaculo> m_obstaculos;
+    QVector<Obstaculon2> m_obstaculos;
     QTimer *m_timer;
 
     // Input simple (solo movimiento lateral ahora)
@@ -67,6 +67,8 @@ private:
     qreal m_limiteEliminacion;    // Posición Y donde se eliminan obstáculos
     qreal m_limiteGeneracion;     // Posición Y donde aparecen obstáculos
     int m_contadorFrames;         // Contador para generar obstáculos periódicamente
+    int m_stamina;                // Tiempo de la stamina
+    int m_staminaMax;
 
     // Sistema de vidas
     int m_vidas;                  // Vidas actuales del jugador
