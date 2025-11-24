@@ -1,20 +1,26 @@
 #include "cadete.h"
 
-cadete::cadete(qreal r, qreal _x, qreal _y)
-    :
-    FuerzaArmada(),
-    radio(r)
+Cadete::Cadete(qreal r, qreal x, qreal y)
+    : FuerzaArmada(r)
 {
-    this->x = _x;
-    this->y = _y;
+    setPos(x, y);
 }
 
-QRectF cadete::boundingRect() const
+void Cadete::paint(QPainter *painter,
+                   const QStyleOptionGraphicsItem *option,
+                   QWidget *widget)
 {
-    return QRectF(x,y,2*radio,2*radio);
-}
+    // Dibujar cuerpo (círculo verde)
+    painter->setBrush(Qt::blue);
+    painter->drawEllipse(boundingRect());
 
-void cadete::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget){
-    painter->setBrush(Qt::darkGreen);
-    painter->drawEllipse(cadete::boundingRect());
+    // Dibujar arma en dirección del vector
+    painter->setPen(QPen(Qt::black, 2));
+    QPointF centro(0, 0);
+
+    qreal largo = radio * 1.8;
+    QPointF punta(direccion.x() * largo,
+                  direccion.y() * largo);
+
+    painter->drawLine(centro, punta);
 }

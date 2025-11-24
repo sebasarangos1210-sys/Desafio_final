@@ -1,15 +1,16 @@
 #ifndef CADETE_H
 #define CADETE_H
+
 #include "fuerzaarmada.h"
 
-class cadete:public FuerzaArmada
+class Cadete : public FuerzaArmada
 {
-private:
-    qreal radio;
 public:
-    QRectF boundingRect() const;
-    cadete(qreal r, qreal _x, qreal _y);
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+    Cadete(qreal r = 10.0, qreal x = 0.0, qreal y = 0.0);
+
+    void paint(QPainter *painter,
+               const QStyleOptionGraphicsItem *option,
+               QWidget *widget) override;
 };
 
 #endif // CADETE_H

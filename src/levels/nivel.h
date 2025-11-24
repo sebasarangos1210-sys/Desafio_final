@@ -9,9 +9,12 @@
 #include <QPushButton>
 #include <vector>
 
-// Declaraciones
-class FuerzaArmada;
-class Obstaculo;
+#include "vector2d.h"
+#include "fuerzaarmada.h"
+#include "cadete.h"
+#include "bala.h"
+#include "obstaculo.h"
+
 class Agente;
 
 class Nivel : public QWidget
@@ -20,7 +23,8 @@ class Nivel : public QWidget
 
 public:
     explicit Nivel(int numeroNivel, QWidget *parent = nullptr,
-                   qreal _v_alto = 800, qreal _v_ancho = 1000);
+                   qreal _v_alto = 700, qreal _v_ancho = 1100);
+    void disparar(FuerzaArmada *emisor);
     ~Nivel();
 
 signals:
@@ -29,55 +33,55 @@ signals:
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private slots:
-    void actualizarJuego(); // El timer
+    void actualizarJuego();
     void onVolverClicked();
+    void disparosEnemigos();
 
 private:
-    // Número del nivel
-    qreal v_alto;
-    qreal v_ancho;
     int numNivel;
 
-    // Sistema gráfico
-    QGraphicsView *vista;
+    Vector2D viewportSize;
+    Vector2D fondoSize;
+    Vector2D limiteMapa;
+    Vector2D camara;
+    Vector2D mouseDir;
+
+    QGraphicsView  *vista;
     QGraphicsScene *escena;
-
-    //Fondo
     QGraphicsPixmapItem *fondoScroll;
-    qreal limx;
-    qreal limy;
-    qreal fondoOffsetX;
-    qreal fondoOffsetY;
 
-    // EL timer
     QTimer *timer;
 
-    // Elementos del juego
     std::vector<FuerzaArmada*> enemigos;
     std::vector<Obstaculo*> obstaculos;
-    FuerzaArmada *jugador;
+    QTimer *timerDisparoEnemigos;
+
+    Cadete *jugador;
     Agente *ia;
 
-    // Input
     bool m_moveLeft;
     bool m_moveRight;
     bool m_moveUp;
     bool m_moveDown;
 
-    // UI
     QPushButton *btnVolver;
 
-    // Métodos de inicialización
     void inicializarUI();
     void inicializarEscena();
     void cargarElementosNivel();
 
-    // Lógica del juego
     void actualizarFondo();
     void manejarColisiones();
     void actualizarIA();
+    void actualizarPosicionFondo();
+
+    std::vector<Proyectil*> proyectiles;
+
 };
 
 #endif // NIVEL_H
