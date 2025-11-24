@@ -6,6 +6,8 @@
 #include <QPointF>
 #include "barco.h"
 #include "obstaculon2.h"
+#include "obstaculo.h"
+#include "torpedo.h"
 
 class QTimer;
 
@@ -48,14 +50,21 @@ private:
     void reiniciarNivel();        // Reiniciar el nivel
     void mostrarVictoria();       // Mostrar mensaje de victoria
 
+    // NUEVO: Funciones para torpedos
+    void dispararTorpedo();       // Crear y disparar un torpedo
+    void updateTorpedos();        // Actualizar posición de torpedos
+    void verificarColisionesTorpedos(); // Verificar si torpedos golpean obstáculos
+    void updateDificultad();      // Ajustar dificultad según tiempo
+
     Barco m_barco;
     QVector<Obstaculon2> m_obstaculos;
+    QVector<Torpedo> m_torpedos;  // Lista de torpedos activos
     QTimer *m_timer;
 
     // Input simple (solo movimiento lateral ahora)
     bool m_moveLeft;
     bool m_moveRight;
-    bool m_sprint;  // Estado del sprint
+    bool m_sprint;  //Estado del sprint
 
     QRectF m_playArea;
 
@@ -67,8 +76,6 @@ private:
     qreal m_limiteEliminacion;    // Posición Y donde se eliminan obstáculos
     qreal m_limiteGeneracion;     // Posición Y donde aparecen obstáculos
     int m_contadorFrames;         // Contador para generar obstáculos periódicamente
-    int m_stamina;                // Tiempo de la stamina
-    int m_staminaMax;
 
     // Sistema de vidas
     int m_vidas;                  // Vidas actuales del jugador
@@ -80,6 +87,14 @@ private:
     int m_tiempoTranscurrido;     // Tiempo en frames (60 frames = 1 segundo)
     int m_tiempoParaGanar;        // Meta en frames (1200 frames = 20 segundos)
     bool m_nivelCompletado;       // Flag de victoria
+
+    // Sistema de disparo
+    int m_cooldownDisparo;        // Frames de espera entre disparos
+    int m_cooldownActual;         // Contador actual de cooldown
+
+    // Dificultad progresiva
+    int m_frecuenciaGeneracion;   // Frames entre generación de obstáculos
+    int m_cantidadObstaculos;     // Cantidad de obstáculos a generar
 };
 
 #endif // NIVELISO_H

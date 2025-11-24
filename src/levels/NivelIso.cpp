@@ -17,11 +17,11 @@ NivelIso::NivelIso(QWidget *parent)
     m_timer(new QTimer(this)),
     m_moveLeft(false),
     m_moveRight(false),
-    m_sprint(false),             // Sprint desactivado al inicio
+    m_sprint(false),             // NUEVO: Sprint desactivado al inicio
     m_scrollOffset(0.0),
     m_scrollSpeed(2.0),          // Velocidad inicial
-    m_scrollSpeedBase(2.0),      // Velocidad normal
-    m_scrollSpeedSprint(4.5),    // Velocidad con sprint (más rápido)
+    m_scrollSpeedBase(2.0),      // NUEVO: Velocidad normal
+    m_scrollSpeedSprint(4.5),    // NUEVO: Velocidad con sprint (más rápido)
     m_limiteEliminacion(-200.0),
     m_limiteGeneracion(300.0),
     m_contadorFrames(0),
@@ -29,9 +29,13 @@ NivelIso::NivelIso(QWidget *parent)
     m_vidasMaximas(4),
     m_invulnerable(false),
     m_contadorInvulnerabilidad(0),
-    m_tiempoTranscurrido(0),     // Iniciar en 0 frames
-    m_tiempoParaGanar(1200),     // 1200 frames = 20 segundos (60 FPS)
-    m_nivelCompletado(false)
+    m_tiempoTranscurrido(0),     // NUEVO: Iniciar en 0 frames
+    m_tiempoParaGanar(1200),     // NUEVO: 1200 frames = 20 segundos (60 FPS)
+    m_nivelCompletado(false),
+    m_cooldownDisparo(15),       // NUEVO: 15 frames entre disparos (~0.25s)
+    m_cooldownActual(0),         // NUEVO: Sin cooldown inicial
+    m_frecuenciaGeneracion(60),  // NUEVO: Iniciar generando cada 60 frames
+    m_cantidadObstaculos(2)      // NUEVO: Iniciar con 1-2 obstáculos
 {
     // Este nivel necesita recibir eventos de teclado directamente
     setFocusPolicy(Qt::StrongFocus);
@@ -79,17 +83,17 @@ void NivelIso::initScene()
     // y = "ancho"       (izquierda ↔ derecha)
     qreal ancho = 300.0;
 
-    // Barco FIJO en la parte inferior (posición Y negativa = cerca del jugador)
+    // NUEVO: Barco FIJO en la parte inferior (posición Y negativa = cerca del jugador)
     m_barco.setPosition(QPointF(-150.0, 0.0));  // Posición fija en X (cerca), Y centrado
 
     // Limpiamos obstáculos
     m_obstaculos.clear();
 
-    // Generar algunos obstáculos iniciales
+    // NUEVO: Generar algunos obstáculos iniciales
     for (int i = 0; i < 3; i++) {
         Obstaculon2 o;
         qreal x = 100.0 + i * 80.0;  // Lejos del barco
-        // Usar bounded con enteros y convertir a qreal
+        // CORREGIDO: Usar bounded con enteros y convertir a qreal
         qreal y = static_cast<qreal>(QRandomGenerator::global()->bounded(-100, 100));
         o.setPosition(QPointF(x, y));
         m_obstaculos.append(o);
@@ -135,11 +139,11 @@ void NivelIso::paintEvent(QPaintEvent *event)
      */
     painter.translate(width() / 2.0, height() / 2.0);
 
-    // Dibujar indicador de vidas (antes de resetear transformación)
+    // NUEVO: Dibujar indicador de vidas (antes de resetear transformación)
     painter.save();
     painter.resetTransform();
     dibujarVidas(painter);
-    dibujarTiempo(painter);  // Dibujar tiempo restante
+    dibujarTiempo(painter);  // NUEVO: Dibujar tiempo restante
     painter.restore();
 
     // Volver a aplicar la transformación para el resto
@@ -169,8 +173,8 @@ void NivelIso::paintEvent(QPaintEvent *event)
     }
 
     // Dibujar barco (rectángulo centrado en la posición proyectada del barco)
-    // Barco FIJO en posición de mundo, no se mueve en X
-    // Parpadeo cuando está invulnerable
+    // MODIFICADO: Barco FIJO en posición de mundo, no se mueve en X
+    // NUEVO: Parpadeo cuando está invulnerable
     int bar_profundidad = 40;
     int bar_ancho = 20;
     int bar_posicionx = -bar_profundidad/2;
@@ -179,7 +183,7 @@ void NivelIso::paintEvent(QPaintEvent *event)
     QPointF barcoWorld = m_barco.position();
     QPointF barcoScreen = ProyeccionIso::toScreen(barcoWorld);
 
-    // Solo dibujar barco si no está en frame de parpadeo
+    // NUEVO: Solo dibujar barco si no está en frame de parpadeo
     bool dibujarBarco = true;
     if (m_invulnerable) {
         // Parpadear cada 5 frames
@@ -213,11 +217,33 @@ void NivelIso::paintEvent(QPaintEvent *event)
         painter.restore();
     }
 
+    // Dibujar torpedos
+    for (const Torpedo &t : m_torpedos) {
+        if (t.estaActivo()) {
+            QPointF tWorld = t.position();
+            QPointF tScreen = ProyeccionIso::toScreen(tWorld);
+
+            painter.save();
+            painter.translate(tScreen);
+            painter.setBrush(Qt::cyan);
+            painter.setPen(Qt::darkCyan);
+            painter.drawEllipse(QRectF(-8, -4, 16, 8));  // Forma de torpedo
+            painter.restore();
+        }
+    }
+
     // Dibujar hitboxes (verde si no colisiona, rojo si está en colisión)
     drawHitbox(painter, m_barco.hitbox(), m_barco.position());
 
     for (const Obstaculon2 &o : m_obstaculos) {
         drawHitbox(painter, o.hitbox(), o.position());
+    }
+
+    // Dibujar hitboxes de torpedos
+    for (const Torpedo &t : m_torpedos) {
+        if (t.estaActivo()) {
+            drawHitbox(painter, t.hitbox(), t.position());
+        }
     }
 }
 
@@ -259,6 +285,100 @@ void NivelIso::dibujarVidas(QPainter &painter)
                      QString("x %1").arg(m_vidas));
 
     painter.restore();
+}
+
+// Disparar torpedo
+void NivelIso::dispararTorpedo()
+{
+    // Verificar cooldown
+    if (m_cooldownActual > 0) {
+        return;  // Aún en cooldown, no disparar
+    }
+
+    // Crear nuevo torpedo
+    Torpedo torpedo;
+
+    // Posicionar en la posición del barco (ligeramente adelante)
+    QPointF posBarco = m_barco.position();
+    torpedo.setPosition(QPointF(posBarco.x() + 20, posBarco.y()));
+
+    // Agregar a la lista
+    m_torpedos.append(torpedo);
+
+    // Activar cooldown
+    m_cooldownActual = m_cooldownDisparo;
+}
+
+// Actualizar torpedos
+void NivelIso::updateTorpedos()
+{
+    // Actualizar posición de cada torpedo
+    for (int i = m_torpedos.size() - 1; i >= 0; --i) {
+        m_torpedos[i].actualizar();
+
+        // Eliminar torpedos que salieron del área
+        if (m_torpedos[i].position().x() > m_limiteGeneracion + 100) {
+            m_torpedos.removeAt(i);
+        } else if (!m_torpedos[i].estaActivo()) {
+            // Eliminar torpedos desactivados (que golpearon algo)
+            m_torpedos.removeAt(i);
+        }
+    }
+}
+
+// Verificar colisiones entre torpedos y obstáculos
+void NivelIso::verificarColisionesTorpedos()
+{
+    for (int i = m_torpedos.size() - 1; i >= 0; --i) {
+        if (!m_torpedos[i].estaActivo()) {
+            continue;
+        }
+
+        for (int j = m_obstaculos.size() - 1; j >= 0; --j) {
+            // Verificar colisión torpedo vs obstáculo
+            bool colision = m_torpedos[i].hitbox().intersects(
+                m_obstaculos[j].hitbox(),
+                m_torpedos[i].position(),
+                m_obstaculos[j].position()
+                );
+
+            if (colision) {
+                // Destruir obstáculo
+                m_obstaculos.removeAt(j);
+
+                // Desactivar torpedo
+                m_torpedos[i].desactivar();
+
+                break;  // Un torpedo solo destruye un obstáculo
+            }
+        }
+    }
+}
+
+// Ajustar dificultad según tiempo transcurrido
+void NivelIso::updateDificultad()
+{
+    // Calcular porcentaje del tiempo transcurrido
+    qreal progreso = static_cast<qreal>(m_tiempoTranscurrido) / m_tiempoParaGanar;
+
+    // Aumentar dificultad gradualmente
+    if (progreso < 0.25) {
+        // 0-25% del tiempo (0-5 segundos): Fácil
+        m_frecuenciaGeneracion = 60;   // Cada 1 segundo
+        m_cantidadObstaculos = 2;      // 1-2 obstáculos
+    } else if (progreso < 0.50) {
+        // 25-50% del tiempo (5-10 segundos): Normal
+        m_frecuenciaGeneracion = 50;   // Cada 0.83 segundos
+        m_cantidadObstaculos = 3;      // 1-3 obstáculos
+    } else if (progreso < 0.75) {
+        // 50-75% del tiempo (10-15 segundos): Difícil
+        m_frecuenciaGeneracion = 40;   // Cada 0.67 segundos
+        m_cantidadObstaculos = 3;      // 1-3 obstáculos
+    } else {
+        // 75-100% del tiempo (15-20 segundos): Muy difícil
+        m_frecuenciaGeneracion = 30;   // Cada 0.5 segundos
+        m_cantidadObstaculos = 4;      // 1-4 obstáculos
+    }
 }
 
 // Dibujar tiempo restante
@@ -344,7 +464,7 @@ void NivelIso::dibujarTiempo(QPainter &painter)
         sprintFont.setPointSize(12);
         sprintFont.setBold(true);
         painter.setFont(sprintFont);
-        painter.drawText(x + barWidth + 10, y + 15, "⚡SPRINT");
+        painter.drawText(x + barWidth + 10, y + 15, "SPRINT");
     }
 
     painter.restore();
@@ -366,6 +486,10 @@ void NivelIso::reiniciarNivel()
     m_contadorFrames = 0;
     m_tiempoTranscurrido = 0;           // Reiniciar tiempo
     m_nivelCompletado = false;
+    m_cooldownActual = 0;               // Reiniciar cooldown
+    m_torpedos.clear();                 // Limpiar torpedos
+    m_frecuenciaGeneracion = 60;        // Reiniciar dificultad
+    m_cantidadObstaculos = 2;           // Reiniciar dificultad
 
     // Reconfigurar escena (barco, obstáculos, etc.)
     initScene();
@@ -388,8 +512,8 @@ void NivelIso::mostrarVictoria()
     msgBox.setWindowTitle("¡Victoria!");
     msgBox.setText("¡Ganaste!");
     msgBox.setInformativeText(QString("¡Felicitaciones! Has sobrevivido 20 segundos.\n\n"
-                                      "Tiempo final: 20. segundos\n"
-                                      "Vidas restantes: %1\n\n"
+                                      "Tiempo final: %.1f segundos\n"
+                                      "Vidas restantes: %1 / %2\n\n"
                                       "¿Qué deseas hacer?")
                                   .arg(segundosTotales, 0, 'f', 1)
                                   .arg(m_vidas)
@@ -435,7 +559,7 @@ void NivelIso::dibujarFondoScrolling(QPainter &painter)
 
 void NivelIso::keyPressEvent(QKeyEvent *event)
 {
-    // Movimiento lateral + sprint
+    // Movimiento lateral + sprint + disparo
     switch (event->key()) {
     case Qt::Key_A:
     case Qt::Key_Left:
@@ -445,11 +569,12 @@ void NivelIso::keyPressEvent(QKeyEvent *event)
     case Qt::Key_Right:
         m_moveRight = true;
         break;
-    case Qt::Key_Shift:  // Tecla Shift para sprint
-    case Qt::Key_W:      // También W para sprint
     case Qt::Key_Up:     // También flecha arriba
         m_sprint = true;
         m_scrollSpeed = m_scrollSpeedSprint;  // Aumentar velocidad
+        break;
+    case Qt::Key_Space:  // Barra espaciadora para disparar
+        dispararTorpedo();
         break;
     default:
         QWidget::keyPressEvent(event);
@@ -468,8 +593,6 @@ void NivelIso::keyReleaseEvent(QKeyEvent *event)
     case Qt::Key_Right:
         m_moveRight = false;
         break;
-    case Qt::Key_Shift:  // Soltar sprint
-    case Qt::Key_W:
     case Qt::Key_Up:
         m_sprint = false;
         m_scrollSpeed = m_scrollSpeedBase;  // Volver a velocidad normal
@@ -482,7 +605,7 @@ void NivelIso::keyReleaseEvent(QKeyEvent *event)
 
 void NivelIso::updateGame()
 {
-    //  No actualizar si el nivel está completado
+    // No actualizar si el nivel está completado
     if (m_nivelCompletado) {
         return;
     }
@@ -508,22 +631,25 @@ void NivelIso::updateGame()
         }
     }
 
+    // 2.5) Actualizar cooldown de disparo
+    if (m_cooldownActual > 0) {
+        m_cooldownActual--;
+    }
+
     // 3) Actualizar posición de obstáculos (scrolling automático)
     updateObstaculos();
+
+    // 3.5) Actualizar torpedos
+    updateTorpedos();
+
+    // 3.6) Verificar colisiones torpedos vs obstáculos
+    verificarColisionesTorpedos();
 
     // 4) Generar nuevos obstáculos periódicamente
     generarNuevosObstaculos();
 
-    // Limite de stamina
-    if (m_sprint) {
-        m_stamina--;
-        if (m_stamina <= 0) {
-            m_sprint = false;
-            m_scrollSpeed = m_scrollSpeedBase;
-        }
-    } else {
-        m_stamina = qMin(m_stamina + 2, m_staminaMax);  // Recuperar
-    }
+    // 4.5) Ajustar dificultad progresivamente
+    updateDificultad();
 
     // 5) Detectar colisiones
     updateCollisions();
@@ -600,7 +726,7 @@ void NivelIso::updateObstaculos()
     }
 }
 
-// Genera nuevos obstáculos
+// Generar nuevos obstáculos
 void NivelIso::generarNuevosObstaculos()
 {
     m_contadorFrames++;
@@ -638,9 +764,9 @@ void NivelIso::updateCollisions()
         o.hitbox().setColliding(false);
     }
 
-    // Solo detectar colisiones si no está invulnerable
+    // Solo detectar colisiones si NO está invulnerable
     if (!m_invulnerable) {
-        // Revisar barco vs cada obstáculo (pensado en 2D)
+        // Revisar barco vs cada obstáculo (colisión por hitbox en mundo 2D)
         for (Obstaculon2 &o : m_obstaculos) {
             bool col = m_barco.hitbox().intersects(
                 o.hitbox(),
@@ -654,11 +780,11 @@ void NivelIso::updateCollisions()
                 // Perder una vida
                 m_vidas--;
 
-                // sebas: Activar invulnerabilidad temporal (2 segundos = 120 frames a 60 FPS)
+                // Activar invulnerabilidad temporal (2 segundos = 120 frames a 60 FPS)
                 m_invulnerable = true;
                 m_contadorInvulnerabilidad = 120;
 
-                // sebas: Verificar Game Over
+                // Verificar Game Over
                 if (m_vidas <= 0) {
                     reiniciarNivel();
                 }
