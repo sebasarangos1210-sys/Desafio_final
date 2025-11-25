@@ -1,7 +1,7 @@
 #include "fuerzaarmada.h"
 
 FuerzaArmada::FuerzaArmada(qreal r)
-    : direccion(0.0, -1.0), radio(r), vida(100), velocidad(3.0)
+    : direccion(0.0, -1.0), radio(r), vida(100), velocidad(3.0), muerto(false)
 {
     setPos(0, 0); // posición base
 }

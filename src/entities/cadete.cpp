@@ -24,3 +24,16 @@ void Cadete::paint(QPainter *painter,
 
     painter->drawLine(centro, punta);
 }
+
+void Cadete::recibirImpacto(Proyectil* p)
+{
+    vida -= p->getDaño();
+    if (vida <= 0)
+        this->muerto = true;
+}
+
+bool Cadete::esJugador() const
+{
+    return true;  // luego si quieres haces un flag para distinguir jugador/enemigo
+}
+

@@ -19,3 +19,17 @@ void Bala::aplicarColision(FuerzaArmada *objetivo)
 
     // Aquí podrías meter animaciones / efectos
 }
+
+void Bala::aplicarImpacto(FuerzaArmada *obj)
+{
+    if (esDeJugador() && obj->esJugador())
+        return; // friendly fire off
+
+    if (!esDeJugador() && !obj->esJugador())
+        return; // enemigos entre sí no se pegan
+
+    obj->recibirImpacto(this);
+    muerto = true;
+}
+
+

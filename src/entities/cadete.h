@@ -11,6 +11,9 @@ public:
     void paint(QPainter *painter,
                const QStyleOptionGraphicsItem *option,
                QWidget *widget) override;
+    void recibirImpacto(Proyectil* p) override;
+    bool esJugador() const override;
+
 };
 
 #endif // CADETE_H

@@ -4,6 +4,7 @@
 #include <QGraphicsItem>
 #include <QPainter>
 #include "vector2d.h"
+#include "proyectil.h"
 
 class FuerzaArmada : public QGraphicsItem
 {
@@ -12,6 +13,7 @@ protected:
     qreal radio;           // Para hitbox circular
     int vida = 10;
     qreal velocidad;
+    bool muerto;
 
 public:
     FuerzaArmada(qreal r = 10.0);
@@ -39,6 +41,11 @@ public:
     virtual void paint(QPainter *painter,
                        const QStyleOptionGraphicsItem *option,
                        QWidget *widget) override;
+
+    //---- Colisiones -----
+    virtual void recibirImpacto(Proyectil* p) = 0;
+    virtual bool esJugador() const = 0;
+
 };
 
 #endif // FUERZAARMADA_H

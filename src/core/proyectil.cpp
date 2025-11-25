@@ -2,6 +2,7 @@
 #include "fuerzaarmada.h"
 #include <QPainter>
 #include <QGraphicsScene>
+#include "obstaculo.h"
 
 Proyectil::Proyectil(FuerzaArmada *emitidoPor,
                      const Vector2D &dir,
@@ -50,17 +51,25 @@ void Proyectil::avanzar()
     }
 
     // Colisiones:
-    QList<QGraphicsItem*> cols = collidingItems();
-    for (auto *item : cols) {
+
+    auto cols = collidingItems();
+    for (auto item : cols)
+    {
         if (item == emisor) continue;
 
-        auto *fa = dynamic_cast<FuerzaArmada*>(item);
+        FuerzaArmada* fa = dynamic_cast<FuerzaArmada*>(item);
         if (fa) {
-            aplicarColision(fa);
+            aplicarImpacto(fa);
+            return;
+        }
+
+        Obstaculo* obs = dynamic_cast<Obstaculo*>(item);
+        if (obs) {
             muerto = true;
             return;
         }
     }
+
 }
 
 
