@@ -1,5 +1,6 @@
 #include "bala.h"
 #include "fuerzaarmada.h"
+#include "proyectil.h"
 
 Bala::Bala(FuerzaArmada *emisor,
            const Vector2D &dir)
