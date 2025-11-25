@@ -5,8 +5,7 @@
 #include <QVector>
 #include <QPointF>
 #include "barco.h"
-#include "obstaculon2.h"
-#include "obstaculo.h"
+#include "obstaculon2.h"  // ✅ CAMBIADO: Solo Obstaculon2
 #include "torpedo.h"
 
 class QTimer;
@@ -42,59 +41,66 @@ private:
                     const QPointF &worldPos);
 
     // Funciones para el sistema de scrolling
-    void updateObstaculos();      // Mueve los obstáculos hacia el barco
-    void generarNuevosObstaculos(); // Genera obstáculos nuevos
-    void dibujarFondoScrolling(QPainter &painter); // Fondo en movimiento
-    void dibujarVidas(QPainter &painter); // Dibujar indicador de vidas
-    void dibujarTiempo(QPainter &painter); // Dibujar tiempo restante
-    void reiniciarNivel();        // Reiniciar el nivel
-    void mostrarVictoria();       // Mostrar mensaje de victoria
+    void updateObstaculos();
+    void generarNuevosObstaculos();
+    void dibujarFondoScrolling(QPainter &painter);
+    void dibujarVidas(QPainter &painter);
+    void dibujarTiempo(QPainter &painter);
+    void dibujarMunicion(QPainter &painter);  // ✅ AGREGAR declaración
+    void reiniciarNivel();
+    void mostrarVictoria();
 
-    // NUEVO: Funciones para torpedos
-    void dispararTorpedo();       // Crear y disparar un torpedo
-    void updateTorpedos();        // Actualizar posición de torpedos
-    void verificarColisionesTorpedos(); // Verificar si torpedos golpean obstáculos
-    void updateDificultad();      // Ajustar dificultad según tiempo
+    // Funciones para torpedos
+    void dispararTorpedo();
+    void updateTorpedos();
+    void verificarColisionesTorpedos();
+    void updateDificultad();
 
     Barco m_barco;
-    QVector<Obstaculon2> m_obstaculos;
-    QVector<Torpedo> m_torpedos;  // Lista de torpedos activos
+    QVector<Obstaculon2> m_obstaculos;  // ✅ CAMBIADO: Obstaculon2 en lugar de Obstaculo
+    QVector<Torpedo> m_torpedos;
     QTimer *m_timer;
 
-    // Input simple (solo movimiento lateral ahora)
+    // Input
     bool m_moveLeft;
     bool m_moveRight;
-    bool m_sprint;  //Estado del sprint
+    bool m_sprint;
 
     QRectF m_playArea;
 
-    // Variables para el scrolling automático
-    qreal m_scrollOffset;         // Desplazamiento acumulado del fondo
-    qreal m_scrollSpeed;          // Velocidad del scrolling
-    qreal m_scrollSpeedBase;      // Velocidad base (sin sprint)
-    qreal m_scrollSpeedSprint;    // Velocidad con sprint
-    qreal m_limiteEliminacion;    // Posición Y donde se eliminan obstáculos
-    qreal m_limiteGeneracion;     // Posición Y donde aparecen obstáculos
-    int m_contadorFrames;         // Contador para generar obstáculos periódicamente
+    // Variables para scrolling
+    qreal m_scrollOffset;
+    qreal m_scrollSpeed;
+    qreal m_scrollSpeedBase;
+    qreal m_scrollSpeedSprint;
+    qreal m_limiteEliminacion;
+    qreal m_limiteGeneracion;
+    int m_contadorFrames;
 
     // Sistema de vidas
-    int m_vidas;                  // Vidas actuales del jugador
-    int m_vidasMaximas;           // Vidas máximas
-    bool m_invulnerable;          // Estado de invulnerabilidad temporal
-    int m_contadorInvulnerabilidad; // Frames restantes de invulnerabilidad
+    int m_vidas;
+    int m_vidasMaximas;
+    bool m_invulnerable;
+    int m_contadorInvulnerabilidad;
 
     // Sistema de tiempo y victoria
-    int m_tiempoTranscurrido;     // Tiempo en frames (60 frames = 1 segundo)
-    int m_tiempoParaGanar;        // Meta en frames (1200 frames = 20 segundos)
-    bool m_nivelCompletado;       // Flag de victoria
+    int m_tiempoTranscurrido;
+    int m_tiempoParaGanar;
+    bool m_nivelCompletado;
 
     // Sistema de disparo
-    int m_cooldownDisparo;        // Frames de espera entre disparos
-    int m_cooldownActual;         // Contador actual de cooldown
+    int m_cooldownDisparo;
+    int m_cooldownActual;
+
+    // ✅ NUEVO: Sistema de munición
+    int m_municionActual;
+    int m_municionMaxima;
+    int m_contadorRecarga;
+    int m_tiempoRecarga;
 
     // Dificultad progresiva
-    int m_frecuenciaGeneracion;   // Frames entre generación de obstáculos
-    int m_cantidadObstaculos;     // Cantidad de obstáculos a generar
+    int m_frecuenciaGeneracion;
+    int m_cantidadObstaculos;
 };
 
 #endif // NIVELISO_H

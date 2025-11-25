@@ -17,11 +17,11 @@ NivelIso::NivelIso(QWidget *parent)
     m_timer(new QTimer(this)),
     m_moveLeft(false),
     m_moveRight(false),
-    m_sprint(false),             // NUEVO: Sprint desactivado al inicio
+    m_sprint(false),             // Sprint desactivado al inicio
     m_scrollOffset(0.0),
     m_scrollSpeed(2.0),          // Velocidad inicial
-    m_scrollSpeedBase(2.0),      // NUEVO: Velocidad normal
-    m_scrollSpeedSprint(4.5),    // NUEVO: Velocidad con sprint (más rápido)
+    m_scrollSpeedBase(2.0),      // Velocidad normal
+    m_scrollSpeedSprint(4.5),    // Velocidad con sprint (más rápido)
     m_limiteEliminacion(-200.0),
     m_limiteGeneracion(300.0),
     m_contadorFrames(0),
@@ -29,13 +29,17 @@ NivelIso::NivelIso(QWidget *parent)
     m_vidasMaximas(4),
     m_invulnerable(false),
     m_contadorInvulnerabilidad(0),
-    m_tiempoTranscurrido(0),     // NUEVO: Iniciar en 0 frames
-    m_tiempoParaGanar(1200),     // NUEVO: 1200 frames = 20 segundos (60 FPS)
+    m_tiempoTranscurrido(0),     // Iniciar en 0 frames
+    m_tiempoParaGanar(1200),     // 1200 frames = 20 segundos (60 FPS)
     m_nivelCompletado(false),
-    m_cooldownDisparo(15),       // NUEVO: 15 frames entre disparos (~0.25s)
-    m_cooldownActual(0),         // NUEVO: Sin cooldown inicial
-    m_frecuenciaGeneracion(60),  // NUEVO: Iniciar generando cada 60 frames
-    m_cantidadObstaculos(2)      // NUEVO: Iniciar con 1-2 obstáculos
+    m_cooldownDisparo(15),       // 15 frames entre disparos (~0.25s)
+    m_cooldownActual(0),         // Sin cooldown inicial
+    m_frecuenciaGeneracion(60),  // Iniciar generando cada 60 frames
+    m_cantidadObstaculos(2),      // Iniciar con 1-2 obstáculos
+    m_municionActual(4),        // Empezar con 10 torpedos
+    m_municionMaxima(4),        // Máximo 10
+    m_contadorRecarga(0),        // Sin recarga inicial
+    m_tiempoRecarga(240)         // 3 segundos para recargar (180 frames)
 {
     // Este nivel necesita recibir eventos de teclado directamente
     setFocusPolicy(Qt::StrongFocus);
@@ -89,11 +93,11 @@ void NivelIso::initScene()
     // Limpiamos obstáculos
     m_obstaculos.clear();
 
-    // NUEVO: Generar algunos obstáculos iniciales
+    // Generar algunos obstáculos iniciales
     for (int i = 0; i < 3; i++) {
         Obstaculon2 o;
         qreal x = 100.0 + i * 80.0;  // Lejos del barco
-        // CORREGIDO: Usar bounded con enteros y convertir a qreal
+        // Usar bounded con enteros y convertir a qreal
         qreal y = static_cast<qreal>(QRandomGenerator::global()->bounded(-100, 100));
         o.setPosition(QPointF(x, y));
         m_obstaculos.append(o);
@@ -129,7 +133,7 @@ void NivelIso::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    // NUEVO: Dibujar fondo con scrolling
+    // Dibujar fondo con scrolling
     dibujarFondoScrolling(painter);
 
     /*
@@ -139,12 +143,14 @@ void NivelIso::paintEvent(QPaintEvent *event)
      */
     painter.translate(width() / 2.0, height() / 2.0);
 
-    // NUEVO: Dibujar indicador de vidas (antes de resetear transformación)
+    // Dibujar indicador de vidas (antes de resetear transformación)
     painter.save();
     painter.resetTransform();
     dibujarVidas(painter);
-    dibujarTiempo(painter);  // NUEVO: Dibujar tiempo restante
+    dibujarTiempo(painter);    // Dibujar tiempo restante
+    dibujarMunicion(painter);
     painter.restore();
+
 
     // Volver a aplicar la transformación para el resto
     painter.resetTransform();
@@ -173,8 +179,8 @@ void NivelIso::paintEvent(QPaintEvent *event)
     }
 
     // Dibujar barco (rectángulo centrado en la posición proyectada del barco)
-    // MODIFICADO: Barco FIJO en posición de mundo, no se mueve en X
-    // NUEVO: Parpadeo cuando está invulnerable
+    // Barco fijo en posición de mundo, no se mueve en X
+    // Parpadeo cuando está invulnerable
     int bar_profundidad = 40;
     int bar_ancho = 20;
     int bar_posicionx = -bar_profundidad/2;
@@ -183,7 +189,7 @@ void NivelIso::paintEvent(QPaintEvent *event)
     QPointF barcoWorld = m_barco.position();
     QPointF barcoScreen = ProyeccionIso::toScreen(barcoWorld);
 
-    // NUEVO: Solo dibujar barco si no está en frame de parpadeo
+    // Solo dibujar barco si no está en frame de parpadeo
     bool dibujarBarco = true;
     if (m_invulnerable) {
         // Parpadear cada 5 frames
@@ -225,7 +231,7 @@ void NivelIso::paintEvent(QPaintEvent *event)
 
             painter.save();
             painter.translate(tScreen);
-            painter.setBrush(Qt::cyan);
+            painter.setBrush(Qt::cyan);  // Torpedos en cyan
             painter.setPen(Qt::darkCyan);
             painter.drawEllipse(QRectF(-8, -4, 16, 8));  // Forma de torpedo
             painter.restore();
@@ -251,7 +257,7 @@ void NivelIso::paintEvent(QPaintEvent *event)
 void NivelIso::dibujarVidas(QPainter &painter)
 {
     // Dibujar corazones en la esquina superior izquierda
-    int x = 120;  // Posición X inicial (debajo del botón Volver)
+    int x = 120;  // Posición X
     int y = 15;   // Posición Y
     int size = 20; // Tamaño de cada corazón
     int spacing = 25; // Espacio entre corazones
@@ -287,12 +293,91 @@ void NivelIso::dibujarVidas(QPainter &painter)
     painter.restore();
 }
 
+// Dibujar indicador de munición
+void NivelIso::dibujarMunicion(QPainter &painter)
+{
+    painter.save();
+
+    // Posición debajo de las vidas
+    int x = 120;
+    int y = 50;  // Debajo de los corazones
+    int size = 18;
+    int spacing = 22;
+
+    // Título
+    QFont fontTitulo = painter.font();
+    fontTitulo.setPointSize(10);
+    fontTitulo.setBold(true);
+    painter.setFont(fontTitulo);
+    painter.setPen(Qt::white);
+    painter.drawText(x, y - 5, "Torpedos:");
+
+    // Dibujar torpedos disponibles
+    for (int i = 0; i < m_municionMaxima; i++) {
+        QRect torpedoRect(x + i * spacing, y, size, size);
+
+        if (i < m_municionActual) {
+            // Torpedo disponible (cyan brillante)
+            painter.setBrush(QColor(0, 255, 255));
+            painter.setPen(QColor(0, 200, 255));
+        } else {
+            // Torpedo gastado (gris oscuro)
+            painter.setBrush(Qt::darkGray);
+            painter.setPen(Qt::gray);
+        }
+
+        // Dibujar óvalo pequeño
+        painter.drawEllipse(torpedoRect);
+    }
+
+    // Mostrar contador numérico
+    painter.setPen(Qt::cyan);
+    QFont fontNum = painter.font();
+    fontNum.setPointSize(12);
+    fontNum.setBold(true);
+    painter.setFont(fontNum);
+    painter.drawText(x + m_municionMaxima * spacing + 5, y + 15,
+                     QString("x %1").arg(m_municionActual));
+
+    // Indicador de recarga (si está recargando)
+    if (m_municionActual < m_municionMaxima && m_contadorRecarga > 0) {
+        qreal progresoRecarga = 1.0 - (static_cast<qreal>(m_contadorRecarga) / m_tiempoRecarga);
+
+        // Barra de recarga
+        int barX = x;
+        int barY = y + 25;
+        int barWidth = 100;
+        int barHeight = 4;
+
+        painter.setBrush(Qt::darkGray);
+        painter.setPen(Qt::NoPen);
+        painter.drawRect(barX, barY, barWidth, barHeight);
+
+        painter.setBrush(QColor(0, 255, 255));
+        painter.drawRect(barX, barY, static_cast<int>(barWidth * progresoRecarga), barHeight);
+
+        // Texto de recarga
+        painter.setPen(QColor(100, 200, 255));
+        QFont fontRecarga = painter.font();
+        fontRecarga.setPointSize(9);
+        painter.setFont(fontRecarga);
+        qreal segundosRestantes = m_contadorRecarga / 60.0;
+        painter.drawText(barX + barWidth + 5, barY + 10,
+                         QString("Recargando... %.1fs").arg(segundosRestantes));
+    }
+
+    painter.restore();
+}
+
 // Disparar torpedo
 void NivelIso::dispararTorpedo()
 {
     // Verificar cooldown
     if (m_cooldownActual > 0) {
         return;  // Aún en cooldown, no disparar
+    }
+    if (m_municionActual <= 0) {
+        return;  // Sin munición disponible
     }
 
     // Crear nuevo torpedo
@@ -307,6 +392,10 @@ void NivelIso::dispararTorpedo()
 
     // Activar cooldown
     m_cooldownActual = m_cooldownDisparo;
+    m_municionActual--;
+    if (m_municionActual == 0) {
+        m_contadorRecarga = m_tiempoRecarga;
+    }
 }
 
 // Actualizar torpedos
@@ -358,30 +447,65 @@ void NivelIso::verificarColisionesTorpedos()
 // Ajustar dificultad según tiempo transcurrido
 void NivelIso::updateDificultad()
 {
-    // Calcular porcentaje del tiempo transcurrido
-    qreal progreso = static_cast<qreal>(m_tiempoTranscurrido) / m_tiempoParaGanar;
+    // Dificultad basada en tiempo TRANSCURRIDO (más difícil mientras más tiempo pasa)
+    qreal segundosTranscurridos = m_tiempoTranscurrido / 60.0;
 
-    // Aumentar dificultad gradualmente
-    if (progreso < 0.25) {
-        // 0-25% del tiempo (0-5 segundos): Fácil
-        m_frecuenciaGeneracion = 60;   // Cada 1 segundo
-        m_cantidadObstaculos = 2;      // 1-2 obstáculos
-    } else if (progreso < 0.50) {
-        // 25-50% del tiempo (5-10 segundos): Normal
-        m_frecuenciaGeneracion = 50;   // Cada 0.83 segundos
-        m_cantidadObstaculos = 3;      // 1-3 obstáculos
-    } else if (progreso < 0.75) {
-        // 50-75% del tiempo (10-15 segundos): Difícil
-        m_frecuenciaGeneracion = 40;   // Cada 0.67 segundos
-        m_cantidadObstaculos = 3;      // 1-3 obstáculos
+    // Calcular tiempo restante para contexto
+    qreal tiempoRestante = (m_tiempoParaGanar - m_tiempoTranscurrido) / 60.0;
+
+    // Sistema de dificultad por fases (cada 5 segundos aumenta)
+    if (segundosTranscurridos < 5.0) {
+        // 0-5 segundos: FÁCIL
+        m_frecuenciaGeneracion = 70;      // Cada 1.17 segundos
+        m_cantidadObstaculos = 2;         // 1-2 obstáculos
+        m_scrollSpeedBase = 2.0;          // Velocidad lenta
+        m_scrollSpeedSprint = 4.5;
+    }
+    else if (segundosTranscurridos < 8.0) {
+        // 5-8 segundos: NORMAL
+        m_frecuenciaGeneracion = 55;      // Cada 0.92 segundos
+        m_cantidadObstaculos = 3;         // 1-3 obstáculos
+        m_scrollSpeedBase = 2.3;
+        m_scrollSpeedSprint = 5.0;
+    }
+    else if (segundosTranscurridos < 12.0) {
+        // 8-12 segundos: MEDIO
+        m_frecuenciaGeneracion = 45;      // Cada 0.75 segundos
+        m_cantidadObstaculos = 3;         // 2-3 obstáculos
+        m_scrollSpeedBase = 2.6;
+        m_scrollSpeedSprint = 5.5;
+    }
+    else if (segundosTranscurridos < 15.0) {
+        // 12-15 segundos: DIFÍCIL
+        m_frecuenciaGeneracion = 38;      // Cada 0.63 segundos
+        m_cantidadObstaculos = 4;         // 2-4 obstáculos
+        m_scrollSpeedBase = 2.9;
+        m_scrollSpeedSprint = 6.0;
+    }
+    else if (segundosTranscurridos < 18.0) {
+        // 15-18 segundos: MUY DIFÍCIL
+        m_frecuenciaGeneracion = 32;      // Cada 0.53 segundos
+        m_cantidadObstaculos = 4;         // 2-4 obstáculos
+        m_scrollSpeedBase = 3.2;
+        m_scrollSpeedSprint = 6.5;
+    }
+    else {
+        // 18-20 segundos: EXTREMO
+        m_frecuenciaGeneracion = 30;      // Cada 0.43 segundos
+        m_cantidadObstaculos = 6;         // 2-5 obstáculos
+        m_scrollSpeedBase = 3.9;          // Muy rápido
+        m_scrollSpeedSprint = 7.4;        // Sprint extremo
+    }
+
+    // Aplicar velocidad según estado de sprint
+    if (!m_sprint) {
+        m_scrollSpeed = m_scrollSpeedBase;
     } else {
-        // 75-100% del tiempo (15-20 segundos): Muy difícil
-        m_frecuenciaGeneracion = 30;   // Cada 0.5 segundos
-        m_cantidadObstaculos = 4;      // 1-4 obstáculos
+        m_scrollSpeed = m_scrollSpeedSprint;
     }
 }
 
-// Dibujar tiempo restante
+// NUEVO: Dibujar tiempo restante
 void NivelIso::dibujarTiempo(QPainter &painter)
 {
     painter.save();
@@ -394,6 +518,9 @@ void NivelIso::dibujarTiempo(QPainter &painter)
     int tiempoRestanteFrames = m_tiempoParaGanar - m_tiempoTranscurrido;
     int segundosRestantes = tiempoRestanteFrames / 60;
     int decimas = (tiempoRestanteFrames % 60) * 10 / 60;
+
+    // Calcular tiempo transcurrido
+    int segundosTranscurridos = m_tiempoTranscurrido / 60;
 
     // Configurar fuente
     QFont font = painter.font();
@@ -418,11 +545,11 @@ void NivelIso::dibujarTiempo(QPainter &painter)
     // Color del texto según tiempo restante
     QColor colorTexto;
     if (segundosRestantes <= 5) {
-        colorTexto = Qt::red;  // Últimos 5 segundos en rojo
+        colorTexto = Qt::red;
     } else if (segundosRestantes <= 10) {
-        colorTexto = Qt::yellow;  // 5-10 segundos en amarillo
+        colorTexto = Qt::yellow;
     } else {
-        colorTexto = Qt::green;  // Más de 10 segundos en verde
+        colorTexto = Qt::green;
     }
 
     painter.setPen(colorTexto);
@@ -443,19 +570,50 @@ void NivelIso::dibujarTiempo(QPainter &painter)
     qreal progreso = qMin(1.0, static_cast<qreal>(m_tiempoTranscurrido) / m_tiempoParaGanar);
     int progressWidth = static_cast<int>(barWidth * progreso);
 
-    // Color de la barra según progreso
+    // Color de la barra según dificultad (tiempo transcurrido)
     QColor colorBarra;
-    if (progreso < 0.5) {
-        colorBarra = Qt::red;
-    } else if (progreso < 0.75) {
-        colorBarra = Qt::yellow;
+    if (segundosTranscurridos < 8) {
+        colorBarra = Qt::green;      // Fase fácil
+    } else if (segundosTranscurridos < 15) {
+        colorBarra = Qt::yellow;     // Fase media
     } else {
-        colorBarra = Qt::green;
+        colorBarra = Qt::red;        // Fase difícil
     }
 
     painter.setBrush(colorBarra);
     painter.setPen(Qt::NoPen);
     painter.drawRect(barX, barY, progressWidth, barHeight);
+
+    // Indicador de nivel de dificultad
+    QString nivelDificultad;
+    QColor colorDificultad;
+
+    if (segundosTranscurridos < 5) {
+        nivelDificultad = "FÁCIL";
+        colorDificultad = QColor(100, 255, 100);
+    } else if (segundosTranscurridos < 8) {
+        nivelDificultad = "NORMAL";
+        colorDificultad = QColor(150, 255, 150);
+    } else if (segundosTranscurridos < 12) {
+        nivelDificultad = "MEDIO";
+        colorDificultad = QColor(255, 255, 100);
+    } else if (segundosTranscurridos < 15) {
+        nivelDificultad = "DIFÍCIL";
+        colorDificultad = QColor(255, 180, 50);
+    } else if (segundosTranscurridos < 18) {
+        nivelDificultad = "MUY DIFÍCIL";
+        colorDificultad = QColor(255, 100, 50);
+    } else {
+        nivelDificultad = "EXTREMO";
+        colorDificultad = Qt::red;
+    }
+
+    painter.setPen(colorDificultad);
+    QFont dificultadFont = painter.font();
+    dificultadFont.setPointSize(11);
+    dificultadFont.setBold(true);
+    painter.setFont(dificultadFont);
+    painter.drawText(barX, barY + 20, nivelDificultad);
 
     // Indicador de sprint
     if (m_sprint) {
@@ -464,7 +622,7 @@ void NivelIso::dibujarTiempo(QPainter &painter)
         sprintFont.setPointSize(12);
         sprintFont.setBold(true);
         painter.setFont(sprintFont);
-        painter.drawText(x + barWidth + 10, y + 15, "SPRINT");
+        painter.drawText(barX + 90, barY + 20, "SPRINT");
     }
 
     painter.restore();
@@ -484,12 +642,14 @@ void NivelIso::reiniciarNivel()
     m_scrollSpeed = m_scrollSpeedBase;  // Volver a velocidad base
     m_sprint = false;                   // Desactivar sprint
     m_contadorFrames = 0;
-    m_tiempoTranscurrido = 0;           // Reiniciar tiempo
+    m_tiempoTranscurrido = 0;           // einiciar tiempo
     m_nivelCompletado = false;
     m_cooldownActual = 0;               // Reiniciar cooldown
     m_torpedos.clear();                 // Limpiar torpedos
-    m_frecuenciaGeneracion = 60;        // Reiniciar dificultad
-    m_cantidadObstaculos = 2;           // Reiniciar dificultad
+    m_frecuenciaGeneracion = 60;        // N Reiniciar dificultad
+    m_cantidadObstaculos = 2;           // einiciar dificultad
+    m_municionActual = m_municionMaxima;
+    m_contadorRecarga = 0;
 
     // Reconfigurar escena (barco, obstáculos, etc.)
     initScene();
@@ -512,8 +672,7 @@ void NivelIso::mostrarVictoria()
     msgBox.setWindowTitle("¡Victoria!");
     msgBox.setText("¡Ganaste!");
     msgBox.setInformativeText(QString("¡Felicitaciones! Has sobrevivido 20 segundos.\n\n"
-                                      "Tiempo final: %.1f segundos\n"
-                                      "Vidas restantes: %1 / %2\n\n"
+                                      "Vidas restantes: 4 / %3 \n\n"
                                       "¿Qué deseas hacer?")
                                   .arg(segundosTotales, 0, 'f', 1)
                                   .arg(m_vidas)
@@ -569,11 +728,11 @@ void NivelIso::keyPressEvent(QKeyEvent *event)
     case Qt::Key_Right:
         m_moveRight = true;
         break;
-    case Qt::Key_Up:     // También flecha arriba
+    case Qt::Key_Up:     //También flecha arriba
         m_sprint = true;
         m_scrollSpeed = m_scrollSpeedSprint;  // Aumentar velocidad
         break;
-    case Qt::Key_Space:  // Barra espaciadora para disparar
+    case Qt::Key_Space:  //Barra espaciadora para disparar
         dispararTorpedo();
         break;
     default:
@@ -593,6 +752,7 @@ void NivelIso::keyReleaseEvent(QKeyEvent *event)
     case Qt::Key_Right:
         m_moveRight = false;
         break;
+        //Soltar sprint
     case Qt::Key_Up:
         m_sprint = false;
         m_scrollSpeed = m_scrollSpeedBase;  // Volver a velocidad normal
@@ -634,6 +794,14 @@ void NivelIso::updateGame()
     // 2.5) Actualizar cooldown de disparo
     if (m_cooldownActual > 0) {
         m_cooldownActual--;
+    }
+
+    if (m_contadorRecarga > 0) {
+        m_contadorRecarga--;
+        if (m_contadorRecarga == 0) {
+            // Recarga completa
+            m_municionActual = m_municionMaxima;
+        }
     }
 
     // 3) Actualizar posición de obstáculos (scrolling automático)
@@ -731,12 +899,15 @@ void NivelIso::generarNuevosObstaculos()
 {
     m_contadorFrames++;
 
-    // Generar un nuevo obstáculo cada 60 frames (1 segundo a 60 FPS)
-    if (m_contadorFrames >= 60) {
+    // Usar frecuencia dinámica en lugar de valor fijo
+    if (m_contadorFrames >= m_frecuenciaGeneracion) {
         m_contadorFrames = 0;
 
-        // Generar 1-2 obstáculos aleatorios
-        int cantidad = QRandomGenerator::global()->bounded(1, 3);
+        // Generar cantidad variable según dificultad
+        // Si m_cantidadObstaculos = 4, genera entre 1 y 4 obstáculos
+        int cantidadMin = qMax(1, m_cantidadObstaculos - 2);  // Mínimo 1
+        int cantidadMax = m_cantidadObstaculos;
+        int cantidad = QRandomGenerator::global()->bounded(cantidadMin, cantidadMax + 1);
 
         for (int i = 0; i < cantidad; i++) {
             Obstaculon2 o;
@@ -745,7 +916,6 @@ void NivelIso::generarNuevosObstaculos()
             qreal x = m_limiteGeneracion;
 
             // Posición Y: aleatoria dentro del área jugable
-            // Usar bounded con enteros y convertir a qreal
             int minY = static_cast<int>(m_playArea.top() + 20.0);
             int maxY = static_cast<int>(m_playArea.bottom() - 20.0);
             qreal y = static_cast<qreal>(QRandomGenerator::global()->bounded(minY, maxY));
