@@ -15,18 +15,10 @@ include(src/core/core.pri)
 
 SOURCES += \
     src/main.cpp \
-    src/mainwindow.cpp \
-    src/nivel.cpp \
-    src/sistema.cpp
+    src/mainwindow.cpp
 
 HEADERS += \
-    src/mainwindow.h \
-    src/nivel.h \
-    src/sistema.h \
-
-SOURCES += \
-    src/main.cpp \
-    src/mainwindow.cpp
+    src/mainwindow.h
 
 FORMS += \
     src/mainwindow.ui

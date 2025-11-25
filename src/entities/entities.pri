@@ -1,7 +1,6 @@
 # src/entities/entities.pri
 
 HEADERS += \
-<<<<<<< HEAD
     $$PWD/barco.h \
     $$PWD/obstaculo.h
     $$PWD/cadete.h \
