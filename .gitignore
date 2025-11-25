@@ -10,7 +10,7 @@ qrc_*
 ui_*
 qmake_*
 *.qm
-*.qrc
+qrc_*
 Makefile*
 *-Build-*
 
@@ -56,7 +56,6 @@ Thumbs.db
 *.log
 *.tmp
 *.cache
-core
 core.*
 
 # =============================================

@@ -1,11 +1,14 @@
 # src/entities/entities.pri
 
 HEADERS += \
+<<<<<<< HEAD
     $$PWD/barco.h \
     $$PWD/obstaculo.h
+    $$PWD/cadete.h \
 
 SOURCES += \
-    $$PWD/barco.cpp \
-    $$PWD/obstaculo.cpp
+    $$PWD/cadete.cpp \
+    $$PWD/obstaculo.cpp \
+    $$PWD/barco.cpp
 
 INCLUDEPATH += $$PWD
