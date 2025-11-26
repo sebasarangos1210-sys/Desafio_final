@@ -4,8 +4,9 @@
 #include <QWidget>
 #include <QVector>
 #include <QPointF>
+#include <QSoundEffect>
 #include "barco.h"
-#include "obstaculon2.h"  // ✅ CAMBIADO: Solo Obstaculon2
+#include "obstaculon2.h"
 #include "torpedo.h"
 
 class QTimer;
@@ -46,9 +47,10 @@ private:
     void dibujarFondoScrolling(QPainter &painter);
     void dibujarVidas(QPainter &painter);
     void dibujarTiempo(QPainter &painter);
-    void dibujarMunicion(QPainter &painter);  // ✅ AGREGAR declaración
+    void dibujarMunicion(QPainter &painter);
     void reiniciarNivel();
     void mostrarVictoria();
+    void mostrarGameOver();
 
     // Funciones para torpedos
     void dispararTorpedo();
@@ -57,7 +59,7 @@ private:
     void updateDificultad();
 
     Barco m_barco;
-    QVector<Obstaculon2> m_obstaculos;  // ✅ CAMBIADO: Obstaculon2 en lugar de Obstaculo
+    QVector<Obstaculon2> m_obstaculos;
     QVector<Torpedo> m_torpedos;
     QTimer *m_timer;
 
@@ -92,7 +94,7 @@ private:
     int m_cooldownDisparo;
     int m_cooldownActual;
 
-    // ✅ NUEVO: Sistema de munición
+    // Sistema de munición
     int m_municionActual;
     int m_municionMaxima;
     int m_contadorRecarga;
@@ -101,6 +103,13 @@ private:
     // Dificultad progresiva
     int m_frecuenciaGeneracion;
     int m_cantidadObstaculos;
+
+    // Sistema de sonido
+    QSoundEffect *m_sonidoDisparo;
+    QSoundEffect *m_sonidoExplosion;  // Cuando torpedo destruye obstáculo
+
+    void cargarSonidosDesdeArchivos();
+    void cargarSonidos();
 };
 
 #endif // NIVELISO_H
