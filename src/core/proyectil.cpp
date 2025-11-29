@@ -59,12 +59,21 @@ void Proyectil::avanzar()
 
         FuerzaArmada* fa = dynamic_cast<FuerzaArmada*>(item);
         if (fa) {
-            aplicarImpacto(fa);
+            //qDebug() << "Bala choco con FuerzaArmada:" << fa;
+            if(fa->esJugador() && !emisor->esJugador()){
+                aplicarImpacto(fa);
+                muerto = true;
+            }
+            if(!fa->esJugador() && emisor->esJugador()){
+                aplicarImpacto(fa);
+                muerto = true;
+            }
             return;
         }
 
         Obstaculo* obs = dynamic_cast<Obstaculo*>(item);
         if (obs) {
+            //qDebug() << "Bala chocó con Obstaculo:" << obs;
             muerto = true;
             return;
         }

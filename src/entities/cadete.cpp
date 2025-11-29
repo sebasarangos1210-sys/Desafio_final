@@ -1,7 +1,7 @@
 #include "cadete.h"
 
-Cadete::Cadete(qreal r, qreal x, qreal y)
-    : FuerzaArmada(r)
+Cadete::Cadete(qreal r, qreal x, qreal y, bool esjug)
+    : FuerzaArmada(r,esjug)
 {
     setPos(x, y);
 }
@@ -27,13 +27,20 @@ void Cadete::paint(QPainter *painter,
 
 void Cadete::recibirImpacto(Proyectil* p)
 {
-    vida -= p->getDaño();
+    if (p->esDeJugador() && !this->jugador){
+        vida -= p->getDaño();
+        //qDebug() << "vida de jugador enemigo : " << vida;
+    }
+    if (!p->esDeJugador() && this->esJugador()){
+        vida -= p->getDaño();
+        //qDebug() << "vida de jugador : " << vida;
+    }
     if (vida <= 0)
         this->muerto = true;
 }
 
 bool Cadete::esJugador() const
 {
-    return true;  // luego si quieres haces un flag para distinguir jugador/enemigo
+    return jugador;
 }
 

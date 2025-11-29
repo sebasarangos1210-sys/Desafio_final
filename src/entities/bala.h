@@ -12,7 +12,7 @@ public:
     void aplicarColision(FuerzaArmada *objetivo) override;
     void aplicarImpacto(FuerzaArmada *obj) override;
 
-    bool esDeJugador() const override { return true; }
+    bool esDeJugador() const override;
 
 };
 

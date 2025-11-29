@@ -13,10 +13,12 @@ protected:
     qreal radio;           // Para hitbox circular
     int vida = 10;
     qreal velocidad;
-    bool muerto;
+    bool jugador;
 
 public:
-    FuerzaArmada(qreal r = 10.0);
+
+    bool muerto;
+    FuerzaArmada(qreal r = 10.0, bool EsJugador = false);
 
     // ----- MOVIMIENTO -----
     inline void setDireccion(const Vector2D &d) {

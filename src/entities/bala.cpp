@@ -16,7 +16,7 @@ Bala::Bala(FuerzaArmada *emisor,
 void Bala::aplicarColision(FuerzaArmada *objetivo)
 {
     // Resta vida
-    objetivo->setVida( objetivo->getVida() - 10 );
+    objetivo->recibirImpacto(this);
 
     // Aquí podrías meter animaciones / efectos
 }
@@ -33,4 +33,7 @@ void Bala::aplicarImpacto(FuerzaArmada *obj)
     muerto = true;
 }
 
-
+bool Bala::esDeJugador() const{
+    bool es = emisor->esJugador() ? true : false;
+    return  es;
+}

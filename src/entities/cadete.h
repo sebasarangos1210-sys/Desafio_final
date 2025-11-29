@@ -6,7 +6,7 @@
 class Cadete : public FuerzaArmada
 {
 public:
-    Cadete(qreal r = 10.0, qreal x = 0.0, qreal y = 0.0);
+    Cadete(qreal r = 10.0, qreal x = 0.0, qreal y = 0.0, bool esjug = false);
 
     void paint(QPainter *painter,
                const QStyleOptionGraphicsItem *option,
