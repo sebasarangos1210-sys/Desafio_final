@@ -43,6 +43,9 @@ protected:
     EstadoGrupo estado;  // etapa actual dentro de ese modo
     bool activo;         // si el nivel lo está usando en este momento
 
+    int enemigosRestantes;
+    int enemigosTotales;
+
 public:
     Agente(Nivel *nivelPtr);
     virtual ~Agente();
@@ -57,8 +60,9 @@ public:
     virtual void actualizar() = 0;
 
     // ----- Estado -----
+    //virtual bool rondaCompletada() const = 0;
+    //virtual bool juegoCompletado() const = 0;
     virtual bool rondaCompletada() const = 0;
-    virtual bool juegoCompletado() const = 0;
 
     // ----- Acceso -----
     inline const std::vector<FuerzaArmada*>& getGrupo() const { return grupo; }
@@ -74,6 +78,9 @@ public:
 
     inline void setRondaAsignada(int r)            { rondaAsignada = r; }
     inline int  getRondaAsignada() const           { return rondaAsignada; }
+
+    inline int getEnemigosRestantes() const { return enemigosRestantes; }
+    inline int getEnemigosTotales() const { return enemigosTotales; }
 
     inline void setActivo(bool a)                  { activo = a; }
     inline bool estaActivo() const                 { return activo; }

@@ -110,6 +110,7 @@ private:
     void actualizarIA();
     void actualizarPosicionFondo();
     void actualizarHUD();
+    void actualizarOleadas();
 
     std::vector<Proyectil*> proyectiles;
 

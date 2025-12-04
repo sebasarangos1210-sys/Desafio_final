@@ -21,8 +21,9 @@ public:
                     qreal radioMin, qreal radioMax,
                     qreal angMinRad, qreal angMaxRad) override;
     void actualizar() override;
+    //bool rondaCompletada() const override;
+    //bool juegoCompletado() const override;
     bool rondaCompletada() const override;
-    bool juegoCompletado() const override;
     Vector2D react_colision(Obstaculo* obs, FuerzaArmada* cadet, qreal step);
 
     // --- setters de configuración del grupo (para Nivel) ---
@@ -38,12 +39,18 @@ public:
     inline qreal getRadioActivacion() const { return radioActivacion; }
 
 private:
-    // Puedes agregar atributos que necesites más adelante:
-    int enemigosRestantes;
 
     // Geometría / comportamiento del grupo de cadetes
     std::vector<Vector2D> puntosObjetivo;  // slots de flanqueo / campamento
     qreal radioActivacion = 0.0;           // para modos de campamento/emboscada
+
+    // lógica específica de cada modo ---
+    void actualizarAtaqueDirecto();
+    void actualizarFlanqueo();
+    void actualizarEmboscada();
+    void actualizarCampamento();
+
+    Vector2D calcularCentroGrupoScene() const;
 
 };
 

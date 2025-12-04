@@ -10,6 +10,7 @@
 #include <QPixmap>
 #include <QDebug>
 #include <QMouseEvent>
+#include <QRandomGenerator>
 
 #include "bala.h"
 #include "oleadacadetes.h"
@@ -147,78 +148,24 @@ void Nivel::inicializarEscena()
 void Nivel::cargarElementosNivel()
 {
     // --- JUGADOR ---
-    jugador = new Cadete(10,0.0,0.0,true);
-    jugador->setPos(0,0);
+    jugador = new Cadete(15, 0.0, 0.0, true);
+    jugador->setPos(0, 0);
     escena->addItem(jugador);
 
-    jugador = new Cadete(15,0.0,0.0,true);
-    jugador->setPos(0,0);
-    escena->addItem(jugador);
+    auto fondoCentro = Vector2D(fondoSize.x() / 2.0,
+                                fondoSize.y() / 2.0);
 
-    auto fondoCentro = Vector2D(fondoSize.x() / 2.0, fondoSize.y() / 2.0);
-
-    /*
-    // --- enemigos de prueba ---
-    // Los colocamos en el mapa, así que deben ser hijos del fondo
-    Cadete *e1 = new Cadete(10);
-    e1->setParentItem(fondoScroll);
-    e1->setPos(fondoSize.x()/2.0 + 300, fondoSize.y()/2.0);
-    enemigos.push_back(e1);
-
-    Cadete *e2 = new Cadete(10);
-    e2->setParentItem(fondoScroll);
-    e2->setPos(fondoSize.x()/2.0 - 400, fondoSize.y()/2.0 + 200);
-    enemigos.push_back(e2);
-
-    Cadete *e3 = new Cadete(10);
-    e3->setParentItem(fondoScroll);
-    e3->setPos(fondoSize.x()/2.0 + 200, fondoSize.y()/2.0 - 300);
-    enemigos.push_back(e3);
-
-    // ===========================
-    //   PRUEBA DE SPAWNEO
-    // ===========================
-    ia = new OleadaCadetes(this);
-
-    ia->spawnRonda(5,
-                   300, 500,
-                   -M_PI*1.7, -M_PI*1.5);
-
-    */
-
-    // PRUEBA DE SPAWNEO: crear un grupo y registrarlo en el nivel
-    auto *grupo1 = new OleadaCadetes(this);
-
-    // opcional: configurar modo/ronda aquí si quieres
-    // grupo1->setModo(ModoGrupo::AtaqueDirecto);
-    // grupo1->setRondaAsignada(1);
-
-    registrarAgente(grupo1);
-
-    grupo1->spawnRonda(5,
-                       300, 500,
-                       -M_PI*1.7, -M_PI*1.5);
-
-    for (auto *e : enemigos){
-        QPointF pj = jugador->scenePos();
-        QPointF pe = e->scenePos();
-
-        Vector2D dir(pj.x() - pe.x(),
-                     pj.y() - pe.y());
-
-        if (dir.magnitud2() > 0)
-            dir = dir.normalizado();
-
-        e->setDireccion(dir);
-    }
+    // --- CREAR GRUPOS / OLEADAS INICIALES ---
+    actualizarOleadas();
 
     // --- Timer para disparos enemigos ---
     timerDisparoEnemigos = new QTimer(this);
-    connect(timerDisparoEnemigos, &QTimer::timeout, this, &Nivel::disparosEnemigos);
-    timerDisparoEnemigos->start(2000); // cada 1 segundo
+    connect(timerDisparoEnemigos, &QTimer::timeout,
+            this, &Nivel::disparosEnemigos);
+    timerDisparoEnemigos->start(2000); // cada 2 segundos
 
     // ===========================
-    //   CREAR 4 OBSTÁCULOS
+    //   OBSTÁCULOS FIJOS
     // ===========================
 
     // 1) Piedra circular (radio 30)
@@ -230,21 +177,64 @@ void Nivel::cargarElementosNivel()
     // 2) Caja rectangular (60x40)
     Obstaculo *caja = new Obstaculo(60, 40);
     caja->setParentItem(fondoScroll);
-    caja->setPos(fondoCentro.x()+150, fondoCentro.y()-80);
+    caja->setPos(fondoCentro.x() + 150, fondoCentro.y() - 80);
     obstaculos.push_back(caja);
 
     // 3) Bulto pequeño circular (radio 20)
     Obstaculo *bulto = new Obstaculo(20);
     bulto->setParentItem(fondoScroll);
-    bulto->setPos(fondoCentro.x()-120, fondoCentro.y()+120);
+    bulto->setPos(fondoCentro.x() - 120, fondoCentro.y() + 120);
     obstaculos.push_back(bulto);
 
     // 4) Pared larga (120x20)
     Obstaculo *pared = new Obstaculo(120, 20);
     pared->setParentItem(fondoScroll);
-    pared->setPos(fondoCentro.x()/2.0+250, fondoCentro.y()+150);
+    pared->setPos(fondoCentro.x() / 2.0 + 250, fondoCentro.y() + 150);
     obstaculos.push_back(pared);
 
+    // ===========================
+    //   OBSTÁCULOS EXTRA (ALEATORIOS)
+    //   radio ∈ [radioMin, radioMax] desde el centro
+    // ===========================
+
+    const int   numExtraObst = 14;   // ajusta cuántos quieres
+    const qreal radioMax      = 400.0;
+    const qreal radioMin      = 80.0; // para no pegarlos encima del jugador
+
+    for (int i = 0; i < numExtraObst; ++i) {
+
+        // Ángulo uniforme en [0, 2π)
+        qreal uAng = QRandomGenerator::global()->generateDouble(); // [0,1)
+        qreal ang  = uAng * 2.0 * M_PI;
+
+        // Radio uniforme en [radioMin, radioMax]
+        qreal uRad = QRandomGenerator::global()->generateDouble();
+        qreal r    = radioMin + (radioMax - radioMin) * uRad;
+
+        // Offset polar → cartesiano
+        Vector2D offset = Vector2D::desdePolar(r, ang);
+
+        // Elegir aleatoriamente si es círculo o rectángulo
+        bool esCircular = (QRandomGenerator::global()->bounded(2) == 0);
+
+        Obstaculo *obs = nullptr;
+        if (esCircular) {
+            // radios entre 15 y 35
+            qreal rad = 15.0 + QRandomGenerator::global()->generateDouble() * 20.0;
+            obs = new Obstaculo(rad);
+        } else {
+            // rectángulos entre 40x20 y 100x60
+            qreal w = 40.0 + QRandomGenerator::global()->generateDouble() * 60.0;
+            qreal h = 20.0 + QRandomGenerator::global()->generateDouble() * 40.0;
+            obs = new Obstaculo(w, h);
+        }
+
+        obs->setParentItem(fondoScroll);
+        obs->setPos(fondoCentro.x() + offset.x(),
+                    fondoCentro.y() + offset.y());
+
+        obstaculos.push_back(obs);
+    }
 }
 
 void Nivel::disparosEnemigos()
@@ -257,22 +247,25 @@ void Nivel::actualizarJuego()
 {
     if (m_moveLeft || m_moveRight || m_moveUp || m_moveDown){
         actualizarFondo();
+    }
 
-        for (auto *e : enemigos){
-            QPointF pj = jugador->scenePos();
-            QPointF pe = e->scenePos();
+    for (auto *e : enemigos){
+        if (!e || e->muerto) continue;
 
-            Vector2D dir(pj.x() - pe.x(),
-                         pj.y() - pe.y());
+        QPointF pj = jugador->scenePos();
+        QPointF pe = e->scenePos();
 
-            if (dir.magnitud2() > 0)
-                dir = dir.normalizado();
+        Vector2D dir(pj.x() - pe.x(),
+                     pj.y() - pe.y());
 
-            e->setDireccion(dir);
-        }
+        if (dir.magnitud2() > 0)
+            dir = dir.normalizado();
+
+        e->setDireccion(dir);
     }
 
     actualizarIA();
+    actualizarOleadas();
 
     for (auto *p : proyectiles)
         if (p)
@@ -295,22 +288,19 @@ void Nivel::actualizarJuego()
         proyectiles.end()
         );
 
-    // Limpiar los que ya murieron
-    enemigos.erase(
-        std::remove_if(
-            enemigos.begin(),
-            enemigos.end(),
-            [&](FuerzaArmada* p){
-                if (p->muerto) {
-                    escena->removeItem(p);
-                    delete p;
-                    return true;
-                }
-                return false;
-            }
-            ),
-        enemigos.end()
-        );
+    // Desactivar (ocultar) los enemigos muertos, pero sin borrarlos aún
+    for (FuerzaArmada *p : enemigos) {
+        if (!p) continue;
+
+        if (p->muerto && p->scene() != nullptr) {
+            // Salen de la escena ⇒ no se pintan ni colisionan
+            escena->removeItem(p);
+
+            // Opcionalmente los “apagas” por si algún código los usa igual:
+            p->setEnabled(false);
+            p->setVisible(false);
+        }
+    }
 
     actualizarHUD();
     manejarColisiones();
@@ -430,6 +420,198 @@ void Nivel::actualizarPosicionFondo()
     fondoScroll->setPos(origenFondo.x(), origenFondo.y());
 }
 
+void Nivel::actualizarOleadas()
+{
+    // -----------------------------------------
+    // 0) Averiguar qué rondas ya tienen grupos
+    // -----------------------------------------
+    bool hayRonda1 = false;
+    bool hayRonda2 = false;
+
+    for (Agente *a : agentes) {
+        if (!a) continue;
+
+        int r = a->getRondaAsignada();
+        if (r == 1) hayRonda1 = true;
+        if (r == 2) hayRonda2 = true;
+    }
+
+    // -----------------------------------------
+    // 1) CREACIÓN DE GRUPOS PARA RONDA 1
+    //    (si aún no existen y estamos en ronda 1)
+    // -----------------------------------------
+    if (!hayRonda1 && ronda_act == 1) {
+
+        // Grupo 1: ataque directo desde un sector
+        auto *g1 = new OleadaCadetes(this);
+        g1->setModo(ModoGrupo::AtaqueDirecto);
+        g1->setEstado(EstadoGrupo::Atacando);   // que empiecen atacando de una
+        g1->setRondaAsignada(1);
+
+        registrarAgente(g1);
+
+        g1->spawnRonda(5,
+                       300.0, 500.0,
+                       -M_PI * 1.7, -M_PI * 1.5);
+
+        // Segundo grupo, misma ronda
+        auto *g2 = new OleadaCadetes(this);
+        g2->setModo(ModoGrupo::AtaqueDirecto);
+        g2->setEstado(EstadoGrupo::Atacando);
+        g2->setRondaAsignada(1);
+        registrarAgente(g2);
+        g2->spawnRonda(5,
+                       300.0, 500.0,
+                       -M_PI * 1.3, -M_PI * 1.1);
+
+        return; // ya hicimos lo que tocaba en este frame
+    }
+
+    // -----------------------------------------
+    // 2) CREACIÓN DE GRUPOS PARA RONDA 2 (FLANQUEO)
+    //    Solo cuando pasamos a ronda 2 y aún no se han creado
+    // -----------------------------------------
+    if (!hayRonda2 && ronda_act == 2) {
+
+        // Slots de flanqueo en coordenadas de escena (jugador en 0,0)
+        // Grupo izquierdo (x negativa)
+        std::vector<Vector2D> slotsIzq = {
+            Vector2D(-350.0, -150.0),
+            Vector2D(-350.0,   -50.0),
+            Vector2D(-350.0,    50.0),
+            Vector2D(-350.0,   150.0)
+        };
+
+        // Grupo derecho (x positiva)
+        std::vector<Vector2D> slotsDer = {
+            Vector2D(350.0, -150.0),
+            Vector2D(350.0,   -50.0),
+            Vector2D(350.0,    50.0),
+            Vector2D(350.0,   150.0)
+        };
+
+        // --- Grupo de flanqueo izquierdo ---
+        auto *gIzq = new OleadaCadetes(this);
+        gIzq->setModo(ModoGrupo::Flanqueo);
+        gIzq->setEstado(EstadoGrupo::Preparando);
+        gIzq->setRondaAsignada(2);
+        gIzq->setPuntosObjetivo(slotsIzq);
+        gIzq->setRadioActivacion(220.0);   // cuando el jugador se acerque a ese radio empiezan a atacar
+        registrarAgente(gIzq);
+
+        // Los spawneamos desde el “semiplano” izquierdo (Q2/Q3)
+        gIzq->spawnRonda(
+            6,              // cantidad de cadetes
+            300.0, 500.0,   // radio [min,max]
+            -M_PI * 1.2,    // ángulo mínimo (aprox. arriba-izquierda)
+            -M_PI * 0.8     // ángulo máximo (aprox. arriba-centro-izq)
+            );
+
+        // --- Grupo de flanqueo derecho ---
+        auto *gDer = new OleadaCadetes(this);
+        gDer->setModo(ModoGrupo::Flanqueo);
+        gDer->setEstado(EstadoGrupo::Preparando);
+        gDer->setRondaAsignada(2);
+        gDer->setPuntosObjetivo(slotsDer);
+        gDer->setRadioActivacion(220.0);
+        registrarAgente(gDer);
+
+        // Los spawneamos desde el semiplano derecho (Q1/Q4)
+        gDer->spawnRonda(
+            6,
+            300.0, 500.0,
+            -M_PI * 0.2,    // ligeramente abajo-derecha
+            0.0             // derecha-arriba
+            );
+
+        return; // ya creamos la ronda 2 en este frame
+    }
+
+    // -----------------------------------------
+    // 3) Activar grupos de la ronda actual que aún no están activos
+    // -----------------------------------------
+    for (Agente *a : agentes) {
+        if (!a) continue;
+
+        if (a->getRondaAsignada() == ronda_act
+            && !a->estaActivo()
+            && a->getEnemigosRestantes() > 0
+            )
+        {
+            a->setActivo(true);
+        }
+    }
+
+    // -----------------------------------------
+    // 4) Recolectar info de la ronda actual
+    // -----------------------------------------
+    int gruposEnRonda    = 0;
+    int gruposTerminados = 0;
+
+    for (Agente *a : agentes) {
+        if (!a) continue;
+
+        if (a->getRondaAsignada() != ronda_act)
+            continue;
+
+        gruposEnRonda++;
+
+        if (a->rondaCompletada())
+            gruposTerminados++;
+    }
+
+    // -----------------------------------------
+    // 5) Cambio de ronda cuando todos los grupos de la actual terminaron
+    // -----------------------------------------
+    if (gruposEnRonda > 0 && gruposTerminados == gruposEnRonda) {
+
+        ronda_act++;
+
+        // Más adelante:
+        //   - crear / configurar nuevos grupos para ronda 3, ronda 4...
+        //   - mostrar mensaje "Ronda superada", etc.
+    }
+
+    // -----------------------------------------
+    // 6) En ronda 2: si algún grupo de flanqueo ya está atacando,
+    //    los demás grupos de la misma ronda cambian a modo Emboscada.
+    //    (Ellos mismos decidirán internamente pasar a Atacando.)
+    // -----------------------------------------
+    if (ronda_act == 2) {
+
+        bool hayFlanqueoAtacando = false;
+
+        // 6.a) ¿Existe al menos un grupo de flanqueo ya atacando?
+        for (Agente *a : agentes) {
+            if (!a) continue;
+            if (a->getRondaAsignada() != 2) continue;
+            if (!a->estaActivo())          continue;
+            if (a->getModo() != ModoGrupo::Flanqueo) continue;
+            if (a->getEnemigosRestantes() <= 0)      continue;
+
+            if (a->getEstado() == EstadoGrupo::Atacando) {
+                hayFlanqueoAtacando = true;
+                break;
+            }
+        }
+
+        // 6.b) Si alguno está atacando, todos los grupos de la ronda 2
+        //      se ponen en modo Emboscada (ellos internamente pasarán a Atacando).
+        if (hayFlanqueoAtacando) {
+            for (Agente *a : agentes) {
+                if (!a) continue;
+                if (a->getRondaAsignada() != 2) continue;
+                if (a->getEnemigosRestantes() <= 0) continue;
+
+                // No tocamos el ESTADO, solo el modo y el flag de activo
+                a->setModo(ModoGrupo::Emboscada);
+                a->setActivo(true);
+            }
+        }
+    }
+
+}
+
 void Nivel::devolverPosicionFondo()
 {
     Vector2D origenFondo = (viewportSize / -2.0) - ant_camara;
@@ -439,6 +621,7 @@ void Nivel::devolverPosicionFondo()
 void Nivel::disparar(FuerzaArmada *emisor)
 {
     if (!emisor) return;
+    if (!emisor->esJugador() && emisor->muerto) return;
 
     // Convertir posición del jugador (escena) → coordenadas del fondo
     QPointF posJugadorEnFondo = fondoScroll->mapFromScene(emisor->scenePos());

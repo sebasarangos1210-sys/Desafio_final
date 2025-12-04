@@ -7,7 +7,9 @@ Agente::Agente(Nivel *nivelPtr)
     rondaAsignada(1),
     modo(ModoGrupo::AtaqueDirecto),
     estado(EstadoGrupo::Preparando),
-    activo(true)
+    activo(true),
+    enemigosRestantes(0),
+    enemigosTotales(0)
 {
 }
 
